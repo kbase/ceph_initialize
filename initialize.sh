@@ -29,3 +29,39 @@
 # 
 # sychan@lbl.gov
 # 7/3/2019
+
+if [ -z "$CEPH_ETC" ]; then
+    echo "The environment variable CEPH_ETC has not been set"
+    exit 1
+fi
+if [ ! -d "$CEPH_ETC" ]; then
+    echo "$CEPH_ETC must be a directory"
+    exit 1
+fi
+
+if [ -z "$OSD_DEV" ]; then
+    echo "The environment variable OSD_DEV has not been set"
+    exit 1
+fi
+
+if [ ! -b "$OSD_DEV" ]; then
+    echo "$OSD_DEV must be a block device"
+    exit 1
+fi
+
+if [ ! -d "/etc/ceph" ]; then
+    echo "The directory /etc/ceph must exist and should be a persistent volume mount"
+fi
+
+echo "Copying $CEPH_ETC to /etc/ceph..."
+cp -r $CEPH_ETC/* /etc/ceph/
+
+echo "Running ceph-volume to prepare $OSD_DEV"
+ceph-volume lvm prepare --bluestore --data $OSD_DEV
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to prepare $OSD_DEV as a bluestore device. Exitting"
+    exit 1
+fi
+
+ceph-volume lvm list --format json
