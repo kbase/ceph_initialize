@@ -193,27 +193,27 @@ https://docs.ceph.com/docs/master/start/hardware-recommendations/
 
 https://ceph.com/community/new-luminous-bluestore/
 
-    When setting up partitions for OSDs, the fastest configuration is pure SSD. If this is not available then
+When setting up partitions for OSDs, the fastest configuration is pure SSD. If this is not available then
 with bluestore, it recommended to have an SSD partition for storing the Bluestore metadata and journal. If you
 do not have any SSDs, then just use a standard partition for the OSD. Here is how a partition is prepared
 if there are available SSD partitions:
 
 ceph-volume lvm prepare --bluestore --data $OSD_DEV
 
-   If there is an SSD partition available then assuming the path to the SSD
+If there is an SSD partition available then assuming the path to the SSD
 partition is in $OSD_JOURNAL_PARTITION this how it is used in the prepare
 command:
 
 ceph-volume lvm prepare --bluestore --data $OSD_DEV --block.db $OSD_JOURNAL_DEV
 
-   If the data partition is SSD already, then simply using the first form, without
+If the data partition is SSD already, then simply using the first form, without
 a --block.db parameter, is enough.
 
 ## Assigning Ceph pools to different types of storage ##
    
 https://ceph.com/community/new-luminous-crush-device-classes/
 
-   When OSDs are brought online, Ceph tries to identify the underlying device type
+When OSDs are brought online, Ceph tries to identify the underlying device type
 (SSD, spinning drive, nvme) by querying the kernel for information about the partition.
 If Ceph is able to identify the storage as SSD, hard disk or nvme then this will be
 visible in the device class displayed in the output from "caph osd tree"
@@ -235,11 +235,12 @@ ID  CLASS WEIGHT   TYPE NAME       STATUS REWEIGHT PRI-AFF
   7   ssd  0.06540         osd.7       up  1.00000 1.00000 
 [root@ceph01 /]# 
 ~~~
-   Note that in the LBL storage cluster, the hdd class is actually hybrid ssd journal +
+
+Note that in the LBL storage cluster, the hdd class is actually hybrid ssd journal +
 spinning drive data partition.
 
 
-   In the installations at LBL so far, ceph has not been able to identify SSD partitions
+In the installations at LBL so far, ceph has not been able to identify SSD partitions
 as SSD, and has put them in the HDD class. This can be fixed manually with the following
 commands:
 ~~~
@@ -249,20 +250,20 @@ $ ceph osd crush set-device-class ssd osd.2 osd.3
 set osd(s) 2,3 to class 'ssd'
 ~~~
 
-   Once device classes are in place for OSDs, Crush rules can be defined to assign
+Once device classes are in place for OSDs, Crush rules can be defined to assign
 storage pools to the relevant OSDs for the workload. For example, this rule called
 "fast" applies to replicated pools, and assigns the pool to the SSD device class:
 ~~~
 ceph osd crush rule create-replicated fast default host ssd
 ~~~
 
-   This next rule named "datastorage" would be used to route the pool to only the
+This next rule named "datastorage" would be used to route the pool to only the
 conventional HDD OSDs 
 ~~~
 ceph osd crush rule create-replicated datastorage default host hdd
 ~~~
 
-   The set of Crush rules in operation can be viewed using the osd crush rule dump
+The set of Crush rules in operation can be viewed using the osd crush rule dump
 subcommand of the ceph commandline tool:
 ~~~
 [root@ceph01 /]# ceph osd crush rule dump
@@ -339,39 +340,39 @@ subcommand of the ceph commandline tool:
 ]
 ~~~
 
-   Note that the "ssd" and "hdd" parameters to the crush rules we defined are
+Note that the "ssd" and "hdd" parameters to the crush rules we defined are
 reflected in the "take" step which assigns the pool to "default~ssd" and
 "default~hdd" shadow hierarchies. Please see this page for more explanation:
 
 https://docs.ceph.com/docs/master/rados/operations/crush-map/
 
-   The storage strategies guide explains the use of device classes and pools
+The storage strategies guide explains the use of device classes and pools
 more thproughly:
 https://access.redhat.com/documentation/en-us/red_hat_ceph_storage/3/html-single/storage_strategies_guide/index
 
-   Once the crush rules are defined, then the rule is invoked during the
+Once the crush rules are defined, then the rule is invoked during the
 pool creation command as follows:
 
 ~~~
 ceph osd pool create default.rgw.buckets.index 4 4 replicated fast
 ~~~
 
-  Or else the rule is assigned to an existing pool to migrate it:
+Or else the rule is assigned to an existing pool to migrate it:
 ~~~
 ceph osd pool set defalt.rgw.buckets.index crush_rule fast
 ~~~
 
-   In this case, we have made sure that the object gateway (S3) indexes are kept
+In this case, we have made sure that the object gateway (S3) indexes are kept
 on SSDs to speed up metadata lookup/updates
 
-   To ensure that other pools are assigned specifically to either SSD or HDD, and
+To ensure that other pools are assigned specifically to either SSD or HDD, and
 not scattered randomly across both device classes, it is a good idea to explicitly
 create the pools with the applicable rules, or else explicitly assign the pool to
 a crush rule.
 
 # Setting up SSD cache tier for RadosGW #
 
-   Setup an SSD pool to be a fast write cache for S3 operations. Note that the cache
+Setup an SSD pool to be a fast write cache for S3 operations. Note that the cache
 mode is "readproxy" which uses the cache _only_ for writes. The read performance is
 actually perfectly adequate, we just need better write performance:
 
